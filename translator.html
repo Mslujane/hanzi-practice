@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文章拼音对照展示生成器 (自动翻译版)</title>
+    <script src="https://unpkg.com/pinyin-pro"></script>
+    <style>
+        body { font-family: 'PingFang SC', sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 40px auto; padding: 0 20px; background-color: #f9f9f9; }
+        .input-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        textarea { width: 100%; height: 150px; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
+        button { display: block; width: 100%; padding: 12px; margin-top: 15px; background-color: #007AFF; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button:disabled { background-color: #ccc; }
+        #output { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .segment { margin-bottom: 30px; }
+        .pinyin { color: #666; font-size: 0.9em; margin-bottom: 2px; }
+        .chinese { font-size: 1.2em; font-weight: 500; margin-bottom: 4px; }
+        .english { color: #007AFF; font-style: italic; font-size: 0.95em; min-height: 1.2em; }
+        .loading { color: #999; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+
+    <h1>文章展示生成器</h1>
+
+    <div class="input-section">
+        <textarea id="articleInput" placeholder="请输入中文文章，点击提交后将自动生成拼音和英文翻译..."></textarea>
+        <button id="submitBtn" onclick="generateDisplay()">提交并生成</button>
+    </div>
+
+    <div id="output"></div>
+
+    <script>
+        const { pinyin } = pinyinPro;
+
+        // 免费翻译函数 (利用 Google Translate 公开接口)
+        async function translateText(text) {
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh-CN&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                // Google 返回的数据结构是嵌套数组，data[0] 包含了翻译结果
+                return data[0].map(item => item[0]).join('');
+            } catch (error) {
+                console.error("翻译出错:", error);
+                return "Translation Error";
+            }
+        }
+
+        async function generateDisplay() {
+            const input = document.getElementById('articleInput').value.trim();
+            const output = document.getElementById('output');
+            const btn = document.getElementById('submitBtn');
+            
+            if (!input) return;
+
+            // 禁用按钮，防止重复点击
+            btn.disabled = true;
+            btn.innerText = "处理中，请稍候...";
+            output.innerHTML = ''; 
+
+            // 按行或结束标点切分，避免一次性翻译太长导致失败
+            const sentences = input.split(/([。！？\n])+/).filter(s => s.trim().length > 0);
+            
+            // 重新组合标点
+            let finalSentences = [];
+            for(let i=0; i<sentences.length; i++){
+                if(/[。！？\n]/.test(sentences[i]) && i > 0) {
+                    finalSentences[finalSentences.length-1] += sentences[i];
+                } else {
+                    finalSentences.push(sentences[i]);
+                }
+            }
+
+            for (let sentence of finalSentences) {
+                const pinyinText = pinyin(sentence, { toneType: 'symbol', type: 'string' });
+                
+                // 先渲染拼音和中文，英文显示加载中
+                const segment = document.createElement('div');
+                segment.className = 'segment';
+                const id = "en-" + Math.random().toString(36).substr(2, 9);
+                segment.innerHTML = `
+                    <div class="pinyin">${pinyinText}</div>
+                    <div class="chinese">${sentence}</div>
+                    <div id="${id}" class="english loading">Translating...</div>
+                `;
+                output.appendChild(segment);
+
+                // 异步获取翻译并更新
+                translateText(sentence).then(trans => {
+                    const enDiv = document.getElementById(id);
+                    enDiv.innerText = trans;
+                    enDiv.classList.remove('loading');
+                });
+            }
+
+            btn.disabled = false;
+            btn.innerText = "提交文章";
+        }
+    </script>
+</body>
+</html>
