@@ -179,14 +179,14 @@
 
         // 1. 智能切分逻辑
         // 匹配：句末标点、换行、闭合引号、闭合括号
-        const rawSegments = input.split(/([。！？\n”"』）])/).filter(s => s !== undefined && s !== '');
+        const rawSegments = input.split(/([。！？\n』）])/).filter(s => s !== undefined && s !== '');
         
         // 2. 粘连逻辑处理
         let sentences = [];
         for (let i = 0; i < rawSegments.length; i++) {
             const part = rawSegments[i];
             // 如果是标点或闭合符号，粘到上一句
-            if (/[。！？\n”"』）]/.test(part) && sentences.length > 0) {
+            if (/[。！？\n』）]/.test(part) && sentences.length > 0) {
                 sentences[sentences.length - 1] += part;
             } else {
                 sentences.push(part);
